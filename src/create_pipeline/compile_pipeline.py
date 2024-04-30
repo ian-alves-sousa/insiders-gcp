@@ -5,6 +5,13 @@ from google_cloud_pipeline_components import aiplatform as gcc_aip
 from kfp.v2 import compiler
 from kfp.v2.dsl import Artifact, Input, Model, Output, component, pipeline
 
+
+
+# pega o caminho absoluto do arquivo
+local_path = os.path.dirname(os.path.abspath(__file__))
+config_path = os.path.join(local_path, "../../config")
+sys.path.append(config_path)
+
 from config import (DATASET_ID, DEPLOY_VERSION, FEATURE_TIME, FEATURES,
                     FEATURESTORE_ID, FRAMEWORK, MODEL_NAME,
                     MODEL_REGISTRY_NAME, N_CLUSTERS, PIPELINE_NAME,
@@ -14,12 +21,6 @@ from config import (DATASET_ID, DEPLOY_VERSION, FEATURE_TIME, FEATURES,
                     TABLE_RAW_ID, TABLE_RETURNS_TEMP_ID,
                     TABLE_SAVE_PREDICTIONS_ID, TABLE_TRAIN_ID, TARGET,
                     VALUES_ENTITY_ID)
-
-# pega o caminho absoluto do arquivo
-local_path = os.path.dirname(os.path.abspath(__file__))
-config_path = os.path.join(local_path, "../../config")
-sys.path.append(config_path)
-
 
 @component(
     packages_to_install=["google-cloud-bigquery", "db-dtypes", "pandas"],
