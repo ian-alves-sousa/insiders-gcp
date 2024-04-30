@@ -1134,8 +1134,8 @@ def ecommerce_pipeline():
         project=PROJECT_ID,
         location=REGION,
         display_name=f"{MODEL_REGISTRY_NAME}",
-        # unmanaged_container_model=model_train_op.outputs["model"],
-        serving_container_image_uri="us-docker.pkg.dev/vertex-ai/prediction/sklearn-cpu.1-0:latest",
+        unmanaged_container_model=model_train_op.outputs["model"],
+        # serving_container_image_uri="us-docker.pkg.dev/vertex-ai/prediction/sklearn-cpu.1-0:latest",
     ).after(model_train_op)
 
     batch_predict_op = batch_prediction(
