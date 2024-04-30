@@ -1,3 +1,10 @@
+import os
+import sys
+
+from google_cloud_pipeline_components import aiplatform as gcc_aip
+from kfp.v2 import compiler
+from kfp.v2.dsl import Artifact, Input, Model, Output, component, pipeline
+
 from config import (DATASET_ID, DEPLOY_VERSION, FEATURE_TIME, FEATURES,
                     FEATURESTORE_ID, FRAMEWORK, MODEL_NAME,
                     MODEL_REGISTRY_NAME, N_CLUSTERS, PIPELINE_NAME,
@@ -7,11 +14,6 @@ from config import (DATASET_ID, DEPLOY_VERSION, FEATURE_TIME, FEATURES,
                     TABLE_RAW_ID, TABLE_RETURNS_TEMP_ID,
                     TABLE_SAVE_PREDICTIONS_ID, TABLE_TRAIN_ID, TARGET,
                     VALUES_ENTITY_ID)
-from kfp.v2.dsl import Artifact, Input, Model, Output, component, pipeline
-from kfp.v2 import compiler
-from google_cloud_pipeline_components import aiplatform as gcc_aip
-import os
-import sys
 
 # pega o caminho absoluto do arquivo
 local_path = os.path.dirname(os.path.abspath(__file__))
@@ -42,8 +44,7 @@ def get_data(project_id: str, dataset_id: str, table_raw_id: str, table_id: str)
         bq_client = bigquery.Client(project=project_name)
 
         # Try dry run before executing query to catch any errors
-        job_config = bigquery.QueryJobConfig(
-            dry_run=True, use_query_cache=False)
+        job_config = bigquery.QueryJobConfig(dry_run=True, use_query_cache=False)
         bq_client.query(sql, job_config=job_config)
 
         # If dry run succeeds without errors, proceed to run query
@@ -112,8 +113,7 @@ def get_data(project_id: str, dataset_id: str, table_raw_id: str, table_id: str)
 
 
 @component(
-    packages_to_install=[
-        "pandas", "google-cloud-bigquery", "db-dtypes", "pandas-gbq"],
+    packages_to_install=["pandas", "google-cloud-bigquery", "db-dtypes", "pandas-gbq"],
     base_image="python:3.10.6",
 )
 def data_preparation(
@@ -478,8 +478,7 @@ def feature_engineering(
             .agg(
                 max_=("InvoiceDate", "max"),
                 min_=("InvoiceDate", "min"),
-                days_=("InvoiceDate", lambda x: (
-                    (x.max() - x.min()).days) + 1),
+                days_=("InvoiceDate", lambda x: ((x.max() - x.min()).days) + 1),
                 buy_=("InvoiceNo", "count"),
             )
             .reset_index()
@@ -581,11 +580,9 @@ def feature_engineering(
         returns = create_qty_returns(dataframe_returns)
 
         # Merge dataframes
-        dfs = [df_fengi, gross_revenue, df_recency,
-               df_qty_products, df_freq, returns]
+        dfs = [df_fengi, gross_revenue, df_recency, df_qty_products, df_freq, returns]
         df_fengi = reduce(
-            lambda left, right: pd.merge(
-                left, right, on="CustomerID", how="left"), dfs
+            lambda left, right: pd.merge(left, right, on="CustomerID", how="left"), dfs
         )
 
         # Fill NaN values
@@ -623,8 +620,7 @@ def feature_engineering(
         bq_client = bigquery.Client(project=project_name)
 
         # Try dry run before executing query to catch any errors
-        job_config = bigquery.QueryJobConfig(
-            dry_run=True, use_query_cache=False)
+        job_config = bigquery.QueryJobConfig(dry_run=True, use_query_cache=False)
         bq_client.query(sql, job_config=job_config)
 
         # If dry run succeeds without errors, proceed to run query
@@ -647,8 +643,7 @@ def feature_engineering(
     query_purchases = f"""SELECT *
                     FROM  `{project_id}.{dataset_id}.{table_purchases_temp_id}`
                     WHERE InvoiceDate <= CURRENT_TIMESTAMP() """
-    df_purchases = pd.read_gbq(
-        query=query_purchases, project_id=PROJECT_NUMBER)
+    df_purchases = pd.read_gbq(query=query_purchases, project_id=PROJECT_NUMBER)
 
     query_returns = f"""SELECT *
                     FROM  `{project_id}.{dataset_id}.{table_returns_temp_id}`"""
@@ -697,10 +692,8 @@ def feature_engineering(
         run_bq_query(sql_update_new_customer, project_name=project_id)
     else:
         # Cria a tabela e insere os dados
-        logging.info(
-            "Tabela nao existente, cria a tabela e inicia insercao dos dados")
-        df_fengi = run_feature_engineering(
-            df_filtered, df_purchases, df_returns)
+        logging.info("Tabela nao existente, cria a tabela e inicia insercao dos dados")
+        df_fengi = run_feature_engineering(df_filtered, df_purchases, df_returns)
         pandas_gbq.to_gbq(
             df_fengi,
             f"{project_id}.{dataset_id}.{table_id}",
@@ -800,8 +793,7 @@ def create_feature_store(
         feature.name for feature in values_feature_ids.list_features()
     ]
 
-    logging.info(
-        f"""Ingerindo os dados na feature store: {featurestore_id}.""")
+    logging.info(f"""Ingerindo os dados na feature store: {featurestore_id}.""")
     values_entity_type.ingest_from_bq(
         feature_ids=values_features_ids,
         feature_time=feature_time,
@@ -855,8 +847,7 @@ def create_batch_serve_fs(
         bq_client = bigquery.Client(project=project_name)
 
         # Try dry run before executing query to catch any errors
-        job_config = bigquery.QueryJobConfig(
-            dry_run=True, use_query_cache=False)
+        job_config = bigquery.QueryJobConfig(dry_run=True, use_query_cache=False)
         bq_client.query(sql, job_config=job_config)
 
         # If dry run succeeds without errors, proceed to run query
@@ -883,10 +874,8 @@ def create_batch_serve_fs(
     logging.info("Criando a tabela de instancia")
     run_bq_query(read_instances_query, project_name=project_id)
 
-    logging.info(
-        f"Iniciando o fornecimento das features da: {featurestore_id}")
-    ecommerce_feature_store = aiplatform.Featurestore(
-        featurestore_name=featurestore_id)
+    logging.info(f"Iniciando o fornecimento das features da: {featurestore_id}")
+    ecommerce_feature_store = aiplatform.Featurestore(featurestore_name=featurestore_id)
 
     logging.info(
         f"Executando o comando para o destino: {TRAIN_TABLE_URI} a partir da tabela: {table_instaces_id}"
@@ -959,8 +948,7 @@ def model_train(
         bq_client = bigquery.Client(project=project_name)
 
         # Try dry run before executing query to catch any errors
-        job_config = bigquery.QueryJobConfig(
-            dry_run=True, use_query_cache=False)
+        job_config = bigquery.QueryJobConfig(dry_run=True, use_query_cache=False)
         bq_client.query(sql, job_config=job_config)
 
         # If dry run succeeds without errors, proceed to run query
@@ -1134,8 +1122,8 @@ def ecommerce_pipeline():
         project=PROJECT_ID,
         location=REGION,
         display_name=f"{MODEL_REGISTRY_NAME}",
-        unmanaged_container_model=model_train_op.outputs["model"],
-        # serving_container_image_uri="us-docker.pkg.dev/vertex-ai/prediction/sklearn-cpu.1-0:latest",
+        # unmanaged_container_model=model_train_op.outputs["model"],
+        serving_container_image_uri="us-docker.pkg.dev/vertex-ai/prediction/sklearn-cpu.1-0:latest",
     ).after(model_train_op)
 
     batch_predict_op = batch_prediction(
